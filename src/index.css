@@ -2,95 +2,145 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* 
+  ERP CLÍNICO - DESIGN SYSTEM
+  Estilo clínico tradicional con tonos médicos profesionales
+  All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Colores principales - Azul médico profesional */
+    --background: 210 25% 98%;
+    --foreground: 215 25% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 215 25% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 215 25% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary - Azul clínico */
+    --primary: 210 65% 45%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary - Verde médico */
+    --secondary: 160 45% 45%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted - Gris suave */
+    --muted: 210 20% 94%;
+    --muted-foreground: 215 15% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent - Teal médico */
+    --accent: 185 50% 45%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructive - Rojo alerta */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Warning - Amarillo advertencia */
+    --warning: 45 93% 47%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Success - Verde éxito */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    /* Info - Azul información */
+    --info: 200 85% 50%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 214 25% 88%;
+    --input: 214 25% 88%;
+    --ring: 210 65% 45%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Sidebar - Panel lateral profesional */
+    --sidebar-background: 215 30% 18%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 210 65% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 25% 25%;
+    --sidebar-accent-foreground: 210 20% 95%;
+    --sidebar-border: 215 20% 25%;
+    --sidebar-ring: 210 65% 55%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Colores semánticos para estados de sesión */
+    --session-programada: 210 65% 55%;
+    --session-completada: 142 71% 45%;
+    --session-cancelada: 0 72% 51%;
+    --session-reprogramada: 45 93% 47%;
+    --session-plan-casero: 270 60% 55%;
 
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Especialidades */
+    --esp-fisioterapia: 210 65% 50%;
+    --esp-fonoaudiologia: 330 65% 50%;
+    --esp-terapia-ocupacional: 45 80% 45%;
+    --esp-psicologia: 270 60% 50%;
+    --esp-terapia-acuatica: 185 70% 45%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 215 30% 10%;
+    --foreground: 210 20% 95%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 215 30% 14%;
+    --card-foreground: 210 20% 95%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 215 30% 14%;
+    --popover-foreground: 210 20% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 210 65% 55%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 160 45% 40%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 215 25% 20%;
+    --muted-foreground: 215 15% 60%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 185 50% 40%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --warning: 45 90% 45%;
+    --warning-foreground: 0 0% 10%;
+
+    --success: 142 65% 40%;
+    --success-foreground: 0 0% 100%;
+
+    --info: 200 80% 50%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 215 25% 22%;
+    --input: 215 25% 22%;
+    --ring: 210 65% 55%;
+
+    --sidebar-background: 215 35% 8%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 210 65% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 215 30% 15%;
+    --sidebar-accent-foreground: 210 20% 95%;
+    --sidebar-border: 215 25% 15%;
+    --sidebar-ring: 210 65% 55%;
+
+    --session-programada: 210 65% 50%;
+    --session-completada: 142 65% 40%;
+    --session-cancelada: 0 62% 45%;
+    --session-reprogramada: 45 90% 45%;
+    --session-plan-casero: 270 55% 50%;
+
+    --esp-fisioterapia: 210 60% 55%;
+    --esp-fonoaudiologia: 330 60% 55%;
+    --esp-terapia-ocupacional: 45 75% 50%;
+    --esp-psicologia: 270 55% 55%;
+    --esp-terapia-acuatica: 185 65% 50%;
   }
 }
 
@@ -100,6 +150,126 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  /* Card con sombra clínica */
+  .card-clinical {
+    @apply bg-card rounded-lg border border-border shadow-sm;
+  }
+
+  /* Badge de estado de sesión */
+  .badge-session {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-programada {
+    background-color: hsl(var(--session-programada) / 0.15);
+    color: hsl(var(--session-programada));
+  }
+
+  .badge-completada {
+    background-color: hsl(var(--session-completada) / 0.15);
+    color: hsl(var(--session-completada));
+  }
+
+  .badge-cancelada {
+    background-color: hsl(var(--session-cancelada) / 0.15);
+    color: hsl(var(--session-cancelada));
+  }
+
+  .badge-reprogramada {
+    background-color: hsl(var(--session-reprogramada) / 0.15);
+    color: hsl(var(--session-reprogramada));
+  }
+
+  .badge-plan-casero {
+    background-color: hsl(var(--session-plan-casero) / 0.15);
+    color: hsl(var(--session-plan-casero));
+  }
+
+  /* Badge de especialidad */
+  .badge-especialidad {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-fisioterapia {
+    background-color: hsl(var(--esp-fisioterapia) / 0.15);
+    color: hsl(var(--esp-fisioterapia));
+  }
+
+  .badge-fonoaudiologia {
+    background-color: hsl(var(--esp-fonoaudiologia) / 0.15);
+    color: hsl(var(--esp-fonoaudiologia));
+  }
+
+  .badge-terapia-ocupacional {
+    background-color: hsl(var(--esp-terapia-ocupacional) / 0.15);
+    color: hsl(var(--esp-terapia-ocupacional));
+  }
+
+  .badge-psicologia {
+    background-color: hsl(var(--esp-psicologia) / 0.15);
+    color: hsl(var(--esp-psicologia));
+  }
+
+  .badge-terapia-acuatica {
+    background-color: hsl(var(--esp-terapia-acuatica) / 0.15);
+    color: hsl(var(--esp-terapia-acuatica));
+  }
+
+  /* Stat card para dashboard */
+  .stat-card {
+    @apply bg-card rounded-lg border border-border p-4 flex flex-col;
+  }
+
+  .stat-value {
+    @apply text-2xl font-bold text-foreground;
+  }
+
+  .stat-label {
+    @apply text-sm text-muted-foreground;
+  }
+
+  /* Formulario clínico */
+  .form-section {
+    @apply space-y-4 p-4 bg-muted/30 rounded-lg border border-border;
+  }
+
+  .form-section-title {
+    @apply text-sm font-semibold text-foreground uppercase tracking-wide mb-3;
+  }
+}
+
+@layer utilities {
+  /* Scrollbar estilizado */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.5);
   }
 }
