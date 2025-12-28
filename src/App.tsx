@@ -13,6 +13,9 @@ import AdminSetup from "./pages/AdminSetup";
 import Dashboard from "./pages/Dashboard";
 import Patients from "./pages/Patients";
 import Therapists from "./pages/Therapists";
+import MedicalOrders from "./pages/MedicalOrders";
+import Schedule from "./pages/Schedule";
+import MySchedule from "./pages/MySchedule";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -44,6 +47,7 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/patients" element={<Patients />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/my-schedule" element={<MySchedule />} />
               
               {/* Rutas solo para admin */}
               <Route
@@ -51,6 +55,22 @@ const App = () => (
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <Therapists />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/orders"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <MedicalOrders />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/schedule"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <Schedule />
                   </ProtectedRoute>
                 }
               />
