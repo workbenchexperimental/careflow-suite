@@ -130,30 +130,45 @@ export default function PatientFormDialog({
 
   const mutation = useMutation({
     mutationFn: async (data: PatientFormData) => {
-      const patientData = {
-        ...data,
-        cedula: data.cedula || null,
-        ciudad: data.ciudad || null,
-        direccion: data.direccion || null,
-        eps: data.eps || null,
-        ocupacion: data.ocupacion || null,
-        telefono: data.telefono || null,
-        email: data.email || null,
-      };
-
       if (isEditing) {
         const { error } = await supabase
           .from('patients')
-          .update(patientData)
+          .update({
+            nombre_completo: data.nombre_completo,
+            cedula: data.cedula || null,
+            sexo: data.sexo,
+            fecha_nacimiento: data.fecha_nacimiento,
+            ciudad: data.ciudad || null,
+            direccion: data.direccion || null,
+            eps: data.eps || null,
+            ocupacion: data.ocupacion || null,
+            telefono: data.telefono || null,
+            email: data.email || null,
+            acudiente_nombre: data.acudiente_nombre,
+            acudiente_telefono: data.acudiente_telefono,
+            acudiente_parentesco: data.acudiente_parentesco,
+          })
           .eq('id', patientId);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('patients')
-          .insert([{
-            ...patientData,
+          .insert({
+            nombre_completo: data.nombre_completo,
+            cedula: data.cedula || null,
+            sexo: data.sexo,
+            fecha_nacimiento: data.fecha_nacimiento,
+            ciudad: data.ciudad || null,
+            direccion: data.direccion || null,
+            eps: data.eps || null,
+            ocupacion: data.ocupacion || null,
+            telefono: data.telefono || null,
+            email: data.email || null,
+            acudiente_nombre: data.acudiente_nombre,
+            acudiente_telefono: data.acudiente_telefono,
+            acudiente_parentesco: data.acudiente_parentesco,
             created_by: user?.id,
-          }]);
+          });
         if (error) throw error;
       }
     },
