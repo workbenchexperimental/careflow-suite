@@ -9,6 +9,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 
 // Pages
 import Auth from "./pages/Auth";
+import AdminSetup from "./pages/AdminSetup";
 import Dashboard from "./pages/Dashboard";
 import Patients from "./pages/Patients";
 import Therapists from "./pages/Therapists";
@@ -25,8 +26,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Ruta pública de autenticación */}
+            {/* Rutas públicas */}
             <Route path="/auth" element={<Auth />} />
+            <Route path="/setup" element={<AdminSetup />} />
             
             {/* Redirigir raíz a dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
