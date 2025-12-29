@@ -17,6 +17,7 @@ import MedicalOrders from "./pages/MedicalOrders";
 import Schedule from "./pages/Schedule";
 import MySchedule from "./pages/MySchedule";
 import Profile from "./pages/Profile";
+import Evolutions from "./pages/Evolutions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="/patients" element={<Patients />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/my-schedule" element={<MySchedule />} />
+              <Route path="/evolutions" element={<Evolutions />} />
               
               {/* Rutas solo para admin */}
               <Route
