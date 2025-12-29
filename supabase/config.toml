@@ -1,1 +1,4 @@
 project_id = "tswajbegzqdaydunzidv"
+
+[functions.generate-evolution-pdf]
+verify_jwt = true
