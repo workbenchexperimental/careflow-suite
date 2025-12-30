@@ -137,45 +137,29 @@ export default function TherapistFormDialog({
           .eq('id', therapistId);
         if (error) throw error;
       } else {
-        // Crear nuevo usuario en auth
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: data.email,
-          password: data.password!,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              nombre_completo: data.nombre_completo,
-            },
-          },
-        });
+        // Usar edge function para crear el terapeuta (bypasses RLS)
+        const { data: session } = await supabase.auth.getSession();
+        if (!session.session) throw new Error('No hay sesión activa');
 
-        if (authError) throw authError;
-        if (!authData.user) throw new Error('No se pudo crear el usuario');
-
-        // Crear rol de terapeuta
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: authData.user.id,
-            role: 'terapeuta',
-          });
-
-        if (roleError) throw roleError;
-
-        // Crear perfil de terapeuta
-        const { error: profileError } = await supabase
-          .from('therapist_profiles')
-          .insert({
-            user_id: authData.user.id,
+        const response = await supabase.functions.invoke('create-therapist', {
+          body: {
+            email: data.email,
+            password: data.password,
             nombre_completo: data.nombre_completo,
             cedula: data.cedula,
-            email: data.email,
             telefono: data.telefono || null,
             especialidad: data.especialidad,
             activo: data.activo,
-          });
+          },
+        });
 
-        if (profileError) throw profileError;
+        if (response.error) {
+          throw new Error(response.error.message || 'Error al crear terapeuta');
+        }
+
+        if (response.data?.error) {
+          throw new Error(response.data.error);
+        }
       }
     },
     onSuccess: () => {
