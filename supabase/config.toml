@@ -2,3 +2,9 @@ project_id = "tswajbegzqdaydunzidv"
 
 [functions.generate-evolution-pdf]
 verify_jwt = true
+
+[functions.create-therapist]
+verify_jwt = true
+
+[functions.reset-admin-password]
+verify_jwt = false
