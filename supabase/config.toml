@@ -4,7 +4,7 @@ project_id = "tswajbegzqdaydunzidv"
 verify_jwt = true
 
 [functions.create-therapist]
-verify_jwt = true
+verify_jwt = false
 
 [functions.reset-admin-password]
 verify_jwt = false
