@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,6 +36,7 @@ import PatientFormDialog from '@/components/patients/PatientFormDialog';
 
 export default function Patients() {
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
@@ -169,7 +171,7 @@ export default function Patients() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/patients/${patient.id}`)}>
                               <Eye className="mr-2 h-4 w-4" />
                               Ver Perfil
                             </DropdownMenuItem>
