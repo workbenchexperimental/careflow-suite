@@ -12,6 +12,7 @@ import Auth from "./pages/Auth";
 import AdminSetup from "./pages/AdminSetup";
 import Dashboard from "./pages/Dashboard";
 import Patients from "./pages/Patients";
+import PatientDetail from "./pages/PatientDetail";
 import Therapists from "./pages/Therapists";
 import MedicalOrders from "./pages/MedicalOrders";
 import Schedule from "./pages/Schedule";
@@ -47,6 +48,7 @@ const App = () => (
             >
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/patients" element={<Patients />} />
+              <Route path="/patients/:id" element={<PatientDetail />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/my-schedule" element={<MySchedule />} />
               <Route path="/evolutions" element={<Evolutions />} />
