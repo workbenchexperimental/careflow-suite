@@ -64,7 +64,6 @@ type OrderFormData = z.infer<typeof orderSchema>;
 interface MedicalOrderFormDialogProps {
   open: boolean;
   onClose: () => void;
-  orderId?: string | null;
   onSuccess: () => void;
 }
 
@@ -80,12 +79,10 @@ const DIAS_SEMANA = [
 export default function MedicalOrderFormDialog({
   open,
   onClose,
-  orderId,
   onSuccess,
 }: MedicalOrderFormDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const isEditing = !!orderId;
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 3, 5]);
 
   const form = useForm<OrderFormData>({
@@ -189,66 +186,48 @@ export default function MedicalOrderFormDialog({
 
   const mutation = useMutation({
     mutationFn: async (data: OrderFormData) => {
-      if (isEditing) {
-        const { error } = await supabase
-          .from('medical_orders')
-          .update({
-            patient_id: data.patient_id,
-            therapist_id: data.therapist_id,
-            especialidad: data.especialidad,
-            total_sesiones: data.total_sesiones,
-            ubicacion: data.ubicacion,
-            diagnostico: data.diagnostico || null,
-            observaciones: data.observaciones || null,
-          })
-          .eq('id', orderId);
-        if (error) throw error;
-      } else {
-        // Crear orden
-        const { data: newOrder, error: orderError } = await supabase
-          .from('medical_orders')
-          .insert({
-            patient_id: data.patient_id,
-            therapist_id: data.therapist_id,
-            especialidad: data.especialidad,
-            total_sesiones: data.total_sesiones,
-            ubicacion: data.ubicacion,
-            diagnostico: data.diagnostico || null,
-            observaciones: data.observaciones || null,
-            created_by: user?.id,
-          })
-          .select()
-          .single();
+      // Crear orden
+      const { data: newOrder, error: orderError } = await supabase
+        .from('medical_orders')
+        .insert({
+          patient_id: data.patient_id,
+          therapist_id: data.therapist_id,
+          especialidad: data.especialidad,
+          total_sesiones: data.total_sesiones,
+          ubicacion: data.ubicacion,
+          diagnostico: data.diagnostico || null,
+          observaciones: data.observaciones || null,
+          created_by: user?.id,
+        })
+        .select()
+        .single();
 
-        if (orderError) throw orderError;
+      if (orderError) throw orderError;
 
-        // Generar sesiones
-        const sessions = generateSessions(
-          data.fecha_inicio,
-          data.hora_inicio,
-          data.total_sesiones,
-          data.dias_semana,
-          data.ubicacion
-        );
+      // Generar sesiones
+      const sessions = generateSessions(
+        data.fecha_inicio,
+        data.hora_inicio,
+        data.total_sesiones,
+        data.dias_semana,
+        data.ubicacion
+      );
 
-        const sessionsWithOrderId = sessions.map(session => ({
-          ...session,
-          medical_order_id: newOrder.id,
-        }));
+      const sessionsWithOrderId = sessions.map(session => ({
+        ...session,
+        medical_order_id: newOrder.id,
+      }));
 
-        const { error: sessionsError } = await supabase
-          .from('sessions')
-          .insert(sessionsWithOrderId);
+      const { error: sessionsError } = await supabase
+        .from('sessions')
+        .insert(sessionsWithOrderId);
 
-        if (sessionsError) throw sessionsError;
-      }
+      if (sessionsError) throw sessionsError;
     },
     onSuccess: () => {
       toast({
-        title: isEditing ? 'Orden actualizada' : 'Orden creada',
-        description: isEditing 
-          ? 'La orden médica ha sido actualizada'
-          : 'La orden médica y sus sesiones han sido creadas exitosamente',
+        title: 'Orden creada',
+        description: 'La orden médica y sus sesiones han sido creadas exitosamente',
       });
       form.reset();
       onSuccess();
@@ -282,14 +261,9 @@ export default function MedicalOrderFormDialog({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? 'Editar Orden Médica' : 'Nueva Orden Médica'}
-          </DialogTitle>
+          <DialogTitle>Nueva Orden Médica</DialogTitle>
           <DialogDescription>
-            {isEditing 
-              ? 'Actualice los datos de la orden médica'
-              : 'Complete los datos para crear una nueva orden y generar la agenda automáticamente'
-            }
+            Complete los datos para crear una nueva orden y generar la agenda automáticamente
           </DialogDescription>
         </DialogHeader>
 
@@ -455,76 +429,74 @@ export default function MedicalOrderFormDialog({
                 </div>
               </div>
 
-              {/* Generación de Agenda (solo para nuevas órdenes) */}
-              {!isEditing && (
-                <div className="form-section">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Calendar className="h-4 w-4 text-primary" />
-                    <span className="form-section-title">Generación de Agenda</span>
-                  </div>
-                  
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="fecha_inicio"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Fecha de Inicio *</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="hora_inicio"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Hora de Sesiones *</FormLabel>
-                          <FormControl>
-                            <Input type="time" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="sm:col-span-2">
-                      <FormLabel>Días de la Semana *</FormLabel>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {DIAS_SEMANA.map((dia) => (
-                          <Button
-                            key={dia.value}
-                            type="button"
-                            variant={selectedDays.includes(dia.value) ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => toggleDay(dia.value)}
-                          >
-                            {dia.label}
-                          </Button>
-                        ))}
-                      </div>
-                      {selectedDays.length === 0 && (
-                        <p className="text-sm text-destructive mt-1">
-                          Seleccione al menos un día
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <Alert className="mt-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Se generarán automáticamente {form.watch('total_sesiones')} sesiones 
-                      comenzando el {form.watch('fecha_inicio') ? format(new Date(form.watch('fecha_inicio')), 'dd/MM/yyyy') : '...'} 
-                      {' '}a las {form.watch('hora_inicio') || '...'}
-                    </AlertDescription>
-                  </Alert>
+              {/* Generación de Agenda */}
+              <div className="form-section">
+                <div className="flex items-center gap-2 mb-4">
+                  <Calendar className="h-4 w-4 text-primary" />
+                  <span className="form-section-title">Generación de Agenda</span>
                 </div>
-              )}
+                
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="fecha_inicio"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Fecha de Inicio *</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="hora_inicio"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hora de Sesiones *</FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="sm:col-span-2">
+                    <FormLabel>Días de la Semana *</FormLabel>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {DIAS_SEMANA.map((dia) => (
+                        <Button
+                          key={dia.value}
+                          type="button"
+                          variant={selectedDays.includes(dia.value) ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => toggleDay(dia.value)}
+                        >
+                          {dia.label}
+                        </Button>
+                      ))}
+                    </div>
+                    {selectedDays.length === 0 && (
+                      <p className="text-sm text-destructive mt-1">
+                        Seleccione al menos un día
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <Alert className="mt-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Se generarán automáticamente {form.watch('total_sesiones')} sesiones 
+                    comenzando el {form.watch('fecha_inicio') ? format(new Date(form.watch('fecha_inicio')), 'dd/MM/yyyy') : '...'} 
+                    {' '}a las {form.watch('hora_inicio') || '...'}
+                  </AlertDescription>
+                </Alert>
+              </div>
 
               <Separator />
 
@@ -542,8 +514,6 @@ export default function MedicalOrderFormDialog({
                       <span className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
                       Guardando...
                     </span>
-                  ) : isEditing ? (
-                    'Actualizar'
                   ) : (
                     'Crear Orden y Agenda'
                   )}

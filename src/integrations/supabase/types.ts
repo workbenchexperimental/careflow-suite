@@ -327,6 +327,8 @@ export type Database = {
           medical_order_id: string
           notas_cancelacion: string | null
           numero_sesion: number
+          reprogramada_a: string | null
+          reprogramada_de: string | null
           ubicacion: Database["public"]["Enums"]["ubicacion_sesion"]
           updated_at: string
         }
@@ -340,6 +342,8 @@ export type Database = {
           medical_order_id: string
           notas_cancelacion?: string | null
           numero_sesion: number
+          reprogramada_a?: string | null
+          reprogramada_de?: string | null
           ubicacion?: Database["public"]["Enums"]["ubicacion_sesion"]
           updated_at?: string
         }
@@ -353,6 +357,8 @@ export type Database = {
           medical_order_id?: string
           notas_cancelacion?: string | null
           numero_sesion?: number
+          reprogramada_a?: string | null
+          reprogramada_de?: string | null
           ubicacion?: Database["public"]["Enums"]["ubicacion_sesion"]
           updated_at?: string
         }
@@ -362,6 +368,20 @@ export type Database = {
             columns: ["medical_order_id"]
             isOneToOne: false
             referencedRelation: "medical_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_reprogramada_a_fkey"
+            columns: ["reprogramada_a"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_reprogramada_de_fkey"
+            columns: ["reprogramada_de"]
+            isOneToOne: false
+            referencedRelation: "sessions"
             referencedColumns: ["id"]
           },
         ]

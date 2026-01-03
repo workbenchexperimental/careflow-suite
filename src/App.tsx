@@ -16,6 +16,7 @@ import PatientDetail from "./pages/PatientDetail";
 import Therapists from "./pages/Therapists";
 import MedicalOrders from "./pages/MedicalOrders";
 import Schedule from "./pages/Schedule";
+import CanceledSessions from "./pages/CanceledSessions";
 import MySchedule from "./pages/MySchedule";
 import Profile from "./pages/Profile";
 import Evolutions from "./pages/Evolutions";
@@ -75,6 +76,14 @@ const App = () => (
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <Schedule />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/canceled-sessions"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <CanceledSessions />
                   </ProtectedRoute>
                 }
               />
