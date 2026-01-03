@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,6 +33,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ESPECIALIDAD_LABELS, Especialidad, UBICACION_LABELS } from '@/types/database';
 import MedicalOrderFormDialog from '@/components/orders/MedicalOrderFormDialog';
+import MedicalOrderViewDialog from '@/components/orders/MedicalOrderViewDialog';
 import SessionsDialog from '@/components/orders/SessionsDialog';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -52,9 +54,10 @@ interface MedicalOrderWithRelations {
 }
 
 export default function MedicalOrders() {
+  const { isAdmin } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+  const [viewOrderId, setViewOrderId] = useState<string | null>(null);
   const [sessionsDialogOrder, setSessionsDialogOrder] = useState<string | null>(null);
 
   const { data: orders, isLoading, refetch } = useQuery({
@@ -85,9 +88,8 @@ export default function MedicalOrders() {
     );
   });
 
-  const handleEdit = (orderId: string) => {
-    setSelectedOrder(orderId);
-    setIsFormOpen(true);
+  const handleViewOrder = (orderId: string) => {
+    setViewOrderId(orderId);
   };
 
   const handleViewSessions = (orderId: string) => {
@@ -96,7 +98,6 @@ export default function MedicalOrders() {
 
   const handleCloseForm = () => {
     setIsFormOpen(false);
-    setSelectedOrder(null);
   };
 
   return (
@@ -109,10 +110,12 @@ export default function MedicalOrders() {
             Gestión de paquetes de sesiones terapéuticas
           </p>
         </div>
-        <Button onClick={() => setIsFormOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nueva Orden
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => setIsFormOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nueva Orden
+          </Button>
+        )}
       </div>
 
       {/* Barra de búsqueda */}
@@ -223,13 +226,13 @@ export default function MedicalOrders() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleViewOrder(order.id)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Ver Detalles
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleViewSessions(order.id)}>
                               <Calendar className="mr-2 h-4 w-4" />
                               Ver Sesiones
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(order.id)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Ver Detalles
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -243,28 +246,38 @@ export default function MedicalOrders() {
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <FileText className="h-12 w-12 text-muted-foreground/50 mb-3" />
               <p className="text-muted-foreground">No hay órdenes médicas registradas</p>
-              <Button 
-                variant="outline" 
-                className="mt-4 gap-2"
-                onClick={() => setIsFormOpen(true)}
-              >
-                <Plus className="h-4 w-4" />
-                Crear primera orden
-              </Button>
+              {isAdmin && (
+                <Button 
+                  variant="outline" 
+                  className="mt-4 gap-2"
+                  onClick={() => setIsFormOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Crear primera orden
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Dialog de formulario */}
-      <MedicalOrderFormDialog
-        open={isFormOpen}
-        onClose={handleCloseForm}
-        orderId={selectedOrder}
-        onSuccess={() => {
-          handleCloseForm();
-          refetch();
-        }}
+      {/* Dialog de formulario - Solo creación */}
+      {isAdmin && (
+        <MedicalOrderFormDialog
+          open={isFormOpen}
+          onClose={handleCloseForm}
+          onSuccess={() => {
+            handleCloseForm();
+            refetch();
+          }}
+        />
+      )}
+
+      {/* Dialog de visualización de orden */}
+      <MedicalOrderViewDialog
+        open={!!viewOrderId}
+        onClose={() => setViewOrderId(null)}
+        orderId={viewOrderId}
       />
 
       {/* Dialog de sesiones */}

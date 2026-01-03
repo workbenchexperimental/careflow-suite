@@ -27,6 +27,7 @@ import {
   ChevronDown,
   User,
   Bell,
+  XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TherapistProfile, AdminProfile, ESPECIALIDAD_LABELS, Especialidad } from '@/types/database';
@@ -46,6 +47,7 @@ const navItems: NavItem[] = [
   { label: 'Órdenes Médicas', icon: FileText, href: '/orders', adminOnly: true },
   { label: 'Mi Agenda', icon: Calendar, href: '/my-schedule', therapistOnly: true },
   { label: 'Agenda General', icon: Calendar, href: '/schedule', adminOnly: true },
+  { label: 'Reprogramación', icon: XCircle, href: '/canceled-sessions', adminOnly: true },
   { label: 'Evoluciones', icon: FileText, href: '/evolutions' },
   { label: 'Nómina', icon: DollarSign, href: '/payroll', adminOnly: true },
   { label: 'Configuración', icon: Settings, href: '/settings', adminOnly: true },
