@@ -22,11 +22,12 @@ import {
   Building2,
   Edit,
 } from 'lucide-react';
-import { formatearEdad, ESPECIALIDAD_LABELS, ESTADO_SESION_LABELS, UBICACION_LABELS } from '@/types/database';
+import { formatearEdad } from '@/types/database';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PatientFormDialog from '@/components/patients/PatientFormDialog';
 import PatientDocuments from '@/components/patients/PatientDocuments';
+import OrderSessionsAccordion from '@/components/patients/OrderSessionsAccordion';
 
 export default function PatientDetail() {
   const { id } = useParams<{ id: string }>();
@@ -50,21 +51,17 @@ export default function PatientDetail() {
     enabled: !!id,
   });
 
-  // Fetch medical orders with therapist info
-  const { data: orders, isLoading: loadingOrders } = useQuery({
-    queryKey: ['patient-orders', id],
+  // Fetch medical orders count
+  const { data: ordersCount } = useQuery({
+    queryKey: ['patient-orders-count', id],
     queryFn: async () => {
-      if (!id) return [];
-      const { data, error } = await supabase
+      if (!id) return 0;
+      const { count, error } = await supabase
         .from('medical_orders')
-        .select(`
-          *,
-          therapist:therapist_profiles(nombre_completo, especialidad)
-        `)
-        .eq('patient_id', id)
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact', head: true })
+        .eq('patient_id', id);
       if (error) throw error;
-      return data;
+      return count || 0;
     },
     enabled: !!id,
   });
@@ -247,18 +244,13 @@ export default function PatientDetail() {
         </CardContent>
       </Card>
 
-      {/* Tabs for Orders, Sessions, Documents */}
+      {/* Tabs for Orders/Sessions and Documents */}
       <Tabs defaultValue="orders" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="orders" className="gap-2">
             <ClipboardList className="h-4 w-4" />
-            <span className="hidden sm:inline">Órdenes</span>
-            <Badge variant="secondary" className="ml-1">{orders?.length || 0}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="sessions" className="gap-2">
-            <Activity className="h-4 w-4" />
-            <span className="hidden sm:inline">Sesiones</span>
-            <Badge variant="secondary" className="ml-1">{sessions?.length || 0}</Badge>
+            <span className="hidden sm:inline">Órdenes y Sesiones</span>
+            <Badge variant="secondary" className="ml-1">{ordersCount || 0}</Badge>
           </TabsTrigger>
           <TabsTrigger value="documents" className="gap-2">
             <FileText className="h-4 w-4" />
@@ -266,153 +258,17 @@ export default function PatientDetail() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Medical Orders Tab */}
+        {/* Medical Orders with Sessions Tab */}
         <TabsContent value="orders">
           <Card className="card-clinical">
             <CardHeader>
-              <CardTitle>Órdenes Médicas</CardTitle>
-              <CardDescription>Historial de órdenes de terapia del paciente</CardDescription>
+              <CardTitle>Órdenes Médicas y Sesiones</CardTitle>
+              <CardDescription>
+                Haga clic en una orden para ver sus sesiones y evoluciones
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {loadingOrders ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : orders && orders.length > 0 ? (
-                <div className="space-y-4">
-                  {orders.map((order) => (
-                    <div key={order.id} className="border rounded-lg p-4 space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div>
-                        <Badge variant={order.estado === 'activa' ? 'default' : order.estado === 'cerrada' ? 'secondary' : 'outline'}>
-                            {order.estado === 'activa' ? 'Activa' : order.estado === 'cerrada' ? 'Cerrada' : 'Cancelada'}
-                          </Badge>
-                          <h4 className="font-medium mt-2">
-                            {ESPECIALIDAD_LABELS[order.especialidad as keyof typeof ESPECIALIDAD_LABELS] || order.especialidad}
-                          </h4>
-                        </div>
-                        <div className="text-right text-sm text-muted-foreground">
-                          <p>{format(new Date(order.created_at), 'dd/MM/yyyy', { locale: es })}</p>
-                          <p className="font-medium text-foreground">
-                            {order.sesiones_completadas}/{order.total_sesiones} sesiones
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="text-muted-foreground">Terapeuta:</span>
-                        <span>{order.therapist?.nombre_completo || 'No asignado'}</span>
-                        <Badge variant="outline">
-                          {UBICACION_LABELS[order.ubicacion as keyof typeof UBICACION_LABELS] || order.ubicacion}
-                        </Badge>
-                      </div>
-                      {order.diagnostico && (
-                        <p className="text-sm text-muted-foreground">
-                          <span className="font-medium">Diagnóstico:</span> {order.diagnostico}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <ClipboardList className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
-                  <p className="text-muted-foreground">No hay órdenes médicas registradas</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Sessions Tab */}
-        <TabsContent value="sessions">
-          <Card className="card-clinical">
-            <CardHeader>
-              <CardTitle>Timeline de Sesiones</CardTitle>
-              <CardDescription>Historial de sesiones y evoluciones clínicas</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loadingSessions ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : sessions && sessions.length > 0 ? (
-                <div className="relative space-y-0">
-                  {/* Timeline line */}
-                  <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
-                  
-                  {sessions.map((session, index) => (
-                    <div key={session.id} className="relative pl-10 pb-6 last:pb-0">
-                      {/* Timeline dot */}
-                      <div className={`absolute left-2.5 w-3 h-3 rounded-full border-2 ${
-                        session.estado === 'completada' ? 'bg-green-500 border-green-500' :
-                        session.estado === 'cancelada' ? 'bg-red-500 border-red-500' :
-                        session.estado === 'plan_casero' ? 'bg-blue-500 border-blue-500' :
-                        'bg-background border-primary'
-                      }`} />
-                      
-                      <div className="border rounded-lg p-4 bg-card">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <p className="font-medium">
-                              Sesión #{session.numero_sesion}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {format(new Date(session.fecha_programada), "EEEE d 'de' MMMM, yyyy", { locale: es })}
-                              {' • '}
-                              {session.hora_inicio?.slice(0, 5)}
-                            </p>
-                          </div>
-                          <Badge variant={
-                            session.estado === 'completada' ? 'default' :
-                            session.estado === 'cancelada' ? 'destructive' :
-                            session.estado === 'plan_casero' ? 'secondary' :
-                            'outline'
-                          }>
-                            {ESTADO_SESION_LABELS[session.estado as keyof typeof ESTADO_SESION_LABELS] || session.estado}
-                          </Badge>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                          <span>{ESPECIALIDAD_LABELS[session.medical_order?.especialidad as keyof typeof ESPECIALIDAD_LABELS]}</span>
-                          <span>•</span>
-                          <span>{session.medical_order?.therapist?.nombre_completo}</span>
-                          <span>•</span>
-                          <Badge variant="outline" className="text-xs">
-                            {UBICACION_LABELS[session.ubicacion as keyof typeof UBICACION_LABELS]}
-                          </Badge>
-                        </div>
-
-                        {/* Evolution */}
-                        {session.evolutions && Array.isArray(session.evolutions) && session.evolutions.length > 0 && (
-                          <div className="mt-3 p-3 bg-muted/50 rounded-md">
-                            <p className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
-                              <FileText className="h-3 w-3" />
-                              Evolución Clínica
-                              {session.evolutions[0].es_cierre && (
-                                <Badge variant="secondary" className="text-xs ml-2">Cierre</Badge>
-                              )}
-                            </p>
-                            <p className="text-sm line-clamp-3">{session.evolutions[0].contenido}</p>
-                          </div>
-                        )}
-
-                        {/* Cancellation note */}
-                        {session.estado === 'cancelada' && session.notas_cancelacion && (
-                          <div className="mt-3 p-3 bg-destructive/10 rounded-md">
-                            <p className="text-xs font-medium text-destructive mb-1">Motivo de cancelación</p>
-                            <p className="text-sm">{session.notas_cancelacion}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Activity className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
-                  <p className="text-muted-foreground">No hay sesiones registradas</p>
-                </div>
-              )}
+              <OrderSessionsAccordion patientId={id!} />
             </CardContent>
           </Card>
         </TabsContent>

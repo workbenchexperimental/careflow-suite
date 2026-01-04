@@ -24,22 +24,26 @@ import {
   Calendar,
   User,
   Stethoscope,
+  ArrowRightLeft,
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ESPECIALIDAD_LABELS, Especialidad, UBICACION_LABELS } from '@/types/database';
 import MedicalOrderFormDialog from '@/components/orders/MedicalOrderFormDialog';
 import MedicalOrderViewDialog from '@/components/orders/MedicalOrderViewDialog';
 import SessionsDialog from '@/components/orders/SessionsDialog';
+import TransferOrderDialog from '@/components/orders/TransferOrderDialog';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface MedicalOrderWithRelations {
   id: string;
+  codigo_orden: string | null;
   patient_id: string;
   therapist_id: string;
   especialidad: string;
@@ -49,7 +53,7 @@ interface MedicalOrderWithRelations {
   estado: string;
   diagnostico: string | null;
   created_at: string;
-  patients: { nombre_completo: string } | null;
+  patients: { nombre_completo: string; cedula: string | null } | null;
   therapist_profiles: { nombre_completo: string } | null;
 }
 
@@ -59,6 +63,7 @@ export default function MedicalOrders() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewOrderId, setViewOrderId] = useState<string | null>(null);
   const [sessionsDialogOrder, setSessionsDialogOrder] = useState<string | null>(null);
+  const [transferOrderId, setTransferOrderId] = useState<string | null>(null);
 
   const { data: orders, isLoading, refetch } = useQuery({
     queryKey: ['medical-orders', searchTerm],
@@ -67,7 +72,7 @@ export default function MedicalOrders() {
         .from('medical_orders')
         .select(`
           *,
-          patients (nombre_completo),
+          patients (nombre_completo, cedula),
           therapist_profiles (nombre_completo)
         `)
         .order('created_at', { ascending: false });
@@ -83,8 +88,10 @@ export default function MedicalOrders() {
     const searchLower = searchTerm.toLowerCase();
     return (
       order.patients?.nombre_completo?.toLowerCase().includes(searchLower) ||
+      order.patients?.cedula?.toLowerCase().includes(searchLower) ||
       order.therapist_profiles?.nombre_completo?.toLowerCase().includes(searchLower) ||
-      order.diagnostico?.toLowerCase().includes(searchLower)
+      order.diagnostico?.toLowerCase().includes(searchLower) ||
+      order.codigo_orden?.toLowerCase().includes(searchLower)
     );
   });
 
@@ -94,6 +101,10 @@ export default function MedicalOrders() {
 
   const handleViewSessions = (orderId: string) => {
     setSessionsDialogOrder(orderId);
+  };
+
+  const handleTransferOrder = (orderId: string) => {
+    setTransferOrderId(orderId);
   };
 
   const handleCloseForm = () => {
@@ -125,7 +136,7 @@ export default function MedicalOrders() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por paciente, terapeuta o diagnóstico..."
+                placeholder="Buscar por código, paciente, cédula, terapeuta o diagnóstico..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -160,6 +171,7 @@ export default function MedicalOrders() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Código</TableHead>
                     <TableHead>Paciente</TableHead>
                     <TableHead>Terapeuta</TableHead>
                     <TableHead>Especialidad</TableHead>
@@ -171,74 +183,95 @@ export default function MedicalOrders() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredOrders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">
-                            {order.patients?.nombre_completo || 'N/A'}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Stethoscope className="h-4 w-4 text-muted-foreground" />
-                          {order.therapist_profiles?.nombre_completo || 'N/A'}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`badge-especialidad badge-${order.especialidad.replace('_', '-')}`}>
-                          {ESPECIALIDAD_LABELS[order.especialidad as Especialidad]}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-primary rounded-full transition-all"
-                              style={{ 
-                                width: `${(order.sesiones_completadas / order.total_sesiones) * 100}%` 
-                              }}
-                            />
+                    {filteredOrders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell>
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {order.codigo_orden || 'N/A'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <span className="font-medium block">
+                                {order.patients?.nombre_completo || 'N/A'}
+                              </span>
+                              {order.patients?.cedula && (
+                                <span className="text-xs text-muted-foreground">
+                                  {order.patients.cedula}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <span className="text-sm text-muted-foreground">
-                            {order.sesiones_completadas}/{order.total_sesiones}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Stethoscope className="h-4 w-4 text-muted-foreground" />
+                            {order.therapist_profiles?.nombre_completo || 'N/A'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`badge-especialidad badge-${order.especialidad.replace('_', '-')}`}>
+                            {ESPECIALIDAD_LABELS[order.especialidad as Especialidad]}
                           </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {UBICACION_LABELS[order.ubicacion as 'intramural' | 'domiciliaria']}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={order.estado === 'activa' ? 'default' : 'secondary'}>
-                          {order.estado === 'activa' ? 'Activa' : 'Cerrada'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(order.created_at), 'dd MMM yyyy', { locale: es })}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleViewOrder(order.id)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Ver Detalles
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleViewSessions(order.id)}>
-                              <Calendar className="mr-2 h-4 w-4" />
-                              Ver Sesiones
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-primary rounded-full transition-all"
+                                style={{ 
+                                  width: `${(order.sesiones_completadas / order.total_sesiones) * 100}%` 
+                                }}
+                              />
+                            </div>
+                            <span className="text-sm text-muted-foreground">
+                              {order.sesiones_completadas}/{order.total_sesiones}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {UBICACION_LABELS[order.ubicacion as 'intramural' | 'domiciliaria']}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={order.estado === 'activa' ? 'default' : 'secondary'}>
+                            {order.estado === 'activa' ? 'Activa' : 'Cerrada'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(order.created_at), 'dd MMM yyyy', { locale: es })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleViewOrder(order.id)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Ver Detalles
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleViewSessions(order.id)}>
+                                <Calendar className="mr-2 h-4 w-4" />
+                                Ver Sesiones
+                              </DropdownMenuItem>
+                              {isAdmin && order.estado === 'activa' && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => handleTransferOrder(order.id)}>
+                                    <ArrowRightLeft className="mr-2 h-4 w-4" />
+                                    Transferir Paquete
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                 </TableBody>
               </Table>
             </div>
@@ -287,6 +320,16 @@ export default function MedicalOrders() {
         orderId={sessionsDialogOrder}
         onSuccess={refetch}
       />
+
+      {/* Dialog de transferencia */}
+      {isAdmin && (
+        <TransferOrderDialog
+          open={!!transferOrderId}
+          onClose={() => setTransferOrderId(null)}
+          orderId={transferOrderId}
+          onSuccess={refetch}
+        />
+      )}
     </div>
   );
 }
