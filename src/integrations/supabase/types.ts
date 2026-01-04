@@ -149,11 +149,13 @@ export type Database = {
       medical_orders: {
         Row: {
           closed_at: string | null
+          codigo_orden: string | null
           created_at: string
           created_by: string | null
           diagnostico: string | null
           especialidad: Database["public"]["Enums"]["especialidad"]
           estado: Database["public"]["Enums"]["estado_orden"]
+          grupo_orden: string | null
           id: string
           observaciones: string | null
           patient_id: string
@@ -165,11 +167,13 @@ export type Database = {
         }
         Insert: {
           closed_at?: string | null
+          codigo_orden?: string | null
           created_at?: string
           created_by?: string | null
           diagnostico?: string | null
           especialidad: Database["public"]["Enums"]["especialidad"]
           estado?: Database["public"]["Enums"]["estado_orden"]
+          grupo_orden?: string | null
           id?: string
           observaciones?: string | null
           patient_id: string
@@ -181,11 +185,13 @@ export type Database = {
         }
         Update: {
           closed_at?: string | null
+          codigo_orden?: string | null
           created_at?: string
           created_by?: string | null
           diagnostico?: string | null
           especialidad?: Database["public"]["Enums"]["especialidad"]
           estado?: Database["public"]["Enums"]["estado_orden"]
+          grupo_orden?: string | null
           id?: string
           observaciones?: string | null
           patient_id?: string
@@ -206,6 +212,58 @@ export type Database = {
           {
             foreignKeyName: "medical_orders_therapist_id_fkey"
             columns: ["therapist_id"]
+            isOneToOne: false
+            referencedRelation: "therapist_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_transfers: {
+        Row: {
+          created_at: string
+          from_therapist_id: string
+          id: string
+          medical_order_id: string
+          motivo: string
+          to_therapist_id: string
+          transferred_by: string
+        }
+        Insert: {
+          created_at?: string
+          from_therapist_id: string
+          id?: string
+          medical_order_id: string
+          motivo: string
+          to_therapist_id: string
+          transferred_by: string
+        }
+        Update: {
+          created_at?: string
+          from_therapist_id?: string
+          id?: string
+          medical_order_id?: string
+          motivo?: string
+          to_therapist_id?: string
+          transferred_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_transfers_from_therapist_id_fkey"
+            columns: ["from_therapist_id"]
+            isOneToOne: false
+            referencedRelation: "therapist_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_transfers_medical_order_id_fkey"
+            columns: ["medical_order_id"]
+            isOneToOne: false
+            referencedRelation: "medical_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_transfers_to_therapist_id_fkey"
+            columns: ["to_therapist_id"]
             isOneToOne: false
             referencedRelation: "therapist_profiles"
             referencedColumns: ["id"]

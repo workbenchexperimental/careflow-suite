@@ -35,6 +35,8 @@ import {
   Save,
   Download,
   CheckCircle,
+  ShieldAlert,
+  ListOrdered,
 } from 'lucide-react';
 import { format, differenceInHours } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -73,7 +75,7 @@ export default function EvolutionFormDialog({
   onSuccess,
 }: EvolutionFormDialogProps) {
   const { toast } = useToast();
-  const { profile, isTherapist } = useAuth();
+  const { profile, isTherapist, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const therapistProfile = isTherapist ? (profile as TherapistProfile) : null;
 
@@ -104,6 +106,8 @@ export default function EvolutionFormDialog({
             especialidad,
             diagnostico,
             total_sesiones,
+            codigo_orden,
+            therapist_id,
             patients (
               id,
               nombre_completo,
@@ -113,7 +117,8 @@ export default function EvolutionFormDialog({
             therapist_profiles (
               id,
               nombre_completo,
-              firma_digital_url
+              firma_digital_url,
+              user_id
             )
           )
         `)
@@ -141,6 +146,32 @@ export default function EvolutionFormDialog({
     enabled: !!sessionId,
   });
 
+  // Query para verificar sesiones anteriores sin evolución
+  const { data: pendingPreviousSessions } = useQuery({
+    queryKey: ['pending-sessions', session?.medical_order_id, session?.numero_sesion],
+    queryFn: async () => {
+      if (!session?.medical_order_id || !session?.numero_sesion) return [];
+      
+      const { data, error } = await supabase
+        .from('sessions')
+        .select(`
+          id,
+          numero_sesion,
+          estado,
+          evolutions(id)
+        `)
+        .eq('medical_order_id', session.medical_order_id)
+        .lt('numero_sesion', session.numero_sesion)
+        .not('estado', 'in', '("cancelada","reprogramada")');
+      
+      if (error) throw error;
+      
+      // Filter sessions without evolution
+      return data?.filter(s => !s.evolutions || (Array.isArray(s.evolutions) && s.evolutions.length === 0)) || [];
+    },
+    enabled: !!session?.medical_order_id && !!session?.numero_sesion,
+  });
+
   // Cargar datos existentes en el formulario
   useEffect(() => {
     if (existingEvolution) {
@@ -166,12 +197,21 @@ export default function EvolutionFormDialog({
     }
   }, [existingEvolution, form]);
 
+  // Verificar si es el terapeuta asignado
+  const assignedTherapistUserId = session?.medical_orders?.therapist_profiles?.user_id;
+  const currentUserId = profile?.user_id;
+  const isAssignedTherapist = isTherapist && assignedTherapistUserId === currentUserId;
+  
   // Verificar si está bloqueada (24 horas)
   const isLocked = existingEvolution?.bloqueado || false;
   const hoursRemaining = existingEvolution 
     ? Math.max(0, 24 - differenceInHours(new Date(), new Date(existingEvolution.created_at)))
     : 24;
-  const canEdit = !isLocked && hoursRemaining > 0;
+  const isExpired = existingEvolution && hoursRemaining <= 0;
+  
+  // Can edit only if: is assigned therapist + not locked + not expired
+  const canEdit = isAssignedTherapist && !isLocked && !isExpired;
+  const canCreate = isAssignedTherapist && !existingEvolution && (pendingPreviousSessions?.length === 0);
 
   // Verificar si es la primera o última sesión
   const isFirstSession = session?.numero_sesion === 1;
@@ -182,6 +222,10 @@ export default function EvolutionFormDialog({
     mutationFn: async (data: EvolutionFormData) => {
       if (!sessionId || !therapistProfile?.id) {
         throw new Error('Datos incompletos');
+      }
+
+      if (!isAssignedTherapist) {
+        throw new Error('Solo el terapeuta asignado puede crear o editar evoluciones');
       }
 
       const evolutionData = {
@@ -281,8 +325,48 @@ export default function EvolutionFormDialog({
           </DialogTitle>
           <DialogDescription>
             {patient?.nombre_completo} • {format(new Date(session.fecha_programada), "d 'de' MMMM 'de' yyyy", { locale: es })}
+            {session.medical_orders?.codigo_orden && (
+              <Badge variant="outline" className="ml-2 font-mono">
+                {session.medical_orders.codigo_orden}
+              </Badge>
+            )}
           </DialogDescription>
         </DialogHeader>
+
+        {/* Alert: Not assigned therapist */}
+        {isTherapist && !isAssignedTherapist && (
+          <Alert variant="destructive">
+            <ShieldAlert className="h-4 w-4" />
+            <AlertDescription>
+              Solo el terapeuta asignado ({therapist?.nombre_completo}) puede crear o editar evoluciones para este paciente.
+              Usted puede ver la evolución pero no modificarla.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Alert: Admin viewing */}
+        {isAdmin && (
+          <Alert>
+            <ShieldAlert className="h-4 w-4" />
+            <AlertDescription>
+              Como administrador, puede ver las evoluciones pero no crearlas ni editarlas.
+              Solo los terapeutas asignados pueden gestionar evoluciones.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Alert: Pending previous sessions */}
+        {isAssignedTherapist && !existingEvolution && pendingPreviousSessions && pendingPreviousSessions.length > 0 && (
+          <Alert variant="destructive">
+            <ListOrdered className="h-4 w-4" />
+            <AlertDescription>
+              Debe completar las evoluciones de las sesiones anteriores primero:
+              <span className="font-medium ml-1">
+                Sesiones {pendingPreviousSessions.map(s => `#${s.numero_sesion}`).join(', ')}
+              </span>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Indicador de bloqueo */}
         {isLocked ? (
@@ -297,7 +381,14 @@ export default function EvolutionFormDialog({
               )}
             </AlertDescription>
           </Alert>
-        ) : existingEvolution ? (
+        ) : isExpired ? (
+          <Alert variant="destructive">
+            <Lock className="h-4 w-4" />
+            <AlertDescription>
+              Han pasado más de 24 horas desde la creación. Esta evolución ya no puede ser editada.
+            </AlertDescription>
+          </Alert>
+        ) : existingEvolution && isAssignedTherapist ? (
           <Alert>
             <Clock className="h-4 w-4" />
             <AlertDescription>
@@ -321,6 +412,10 @@ export default function EvolutionFormDialog({
             <Badge variant="outline">
               {ESPECIALIDAD_LABELS[session.medical_orders?.especialidad as Especialidad]}
             </Badge>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Terapeuta:</span>
+            <span className="font-medium text-foreground">{therapist?.nombre_completo}</span>
           </div>
           {session.medical_orders?.diagnostico && (
             <p className="text-sm text-muted-foreground pt-2 border-t">
@@ -349,7 +444,7 @@ export default function EvolutionFormDialog({
                         : "Describa la evolución del paciente, observaciones, respuesta al tratamiento..."
                       }
                       className="min-h-[120px]"
-                      disabled={isLocked}
+                      disabled={!canEdit && !canCreate}
                       {...field}
                     />
                   </FormControl>
@@ -369,7 +464,7 @@ export default function EvolutionFormDialog({
                     <Textarea
                       placeholder="Técnicas y procedimientos aplicados durante la sesión..."
                       className="min-h-[80px]"
-                      disabled={isLocked}
+                      disabled={!canEdit && !canCreate}
                       {...field}
                     />
                   </FormControl>
@@ -389,7 +484,7 @@ export default function EvolutionFormDialog({
                     <Textarea
                       placeholder="Plan para próximas sesiones, objetivos terapéuticos..."
                       className="min-h-[80px]"
-                      disabled={isLocked}
+                      disabled={!canEdit && !canCreate}
                       {...field}
                     />
                   </FormControl>
@@ -409,7 +504,7 @@ export default function EvolutionFormDialog({
                     <Textarea
                       placeholder="Indicaciones para el paciente, ejercicios en casa..."
                       className="min-h-[80px]"
-                      disabled={isLocked}
+                      disabled={!canEdit && !canCreate}
                       {...field}
                     />
                   </FormControl>
@@ -439,7 +534,7 @@ export default function EvolutionFormDialog({
                         <Textarea
                           placeholder="Concepto profesional sobre el resultado del tratamiento..."
                           className="min-h-[100px]"
-                          disabled={isLocked}
+                          disabled={!canEdit && !canCreate}
                           {...field}
                         />
                       </FormControl>
@@ -458,7 +553,7 @@ export default function EvolutionFormDialog({
                         <Textarea
                           placeholder="Estado funcional final del paciente, logros alcanzados..."
                           className="min-h-[100px]"
-                          disabled={isLocked}
+                          disabled={!canEdit && !canCreate}
                           {...field}
                         />
                       </FormControl>
@@ -470,7 +565,7 @@ export default function EvolutionFormDialog({
             )}
 
             {/* Toggle de cierre anticipado (solo si no es última sesión) */}
-            {!isLastSession && (
+            {!isLastSession && (canEdit || canCreate) && (
               <FormField
                 control={form.control}
                 name="es_cierre"
@@ -488,7 +583,7 @@ export default function EvolutionFormDialog({
                       <Switch
                         checked={field.value}
                         onCheckedChange={field.onChange}
-                        disabled={isLocked}
+                        disabled={!canEdit && !canCreate}
                       />
                     </FormControl>
                   </FormItem>
@@ -514,7 +609,7 @@ export default function EvolutionFormDialog({
             {/* Botones de acción */}
             <div className="flex gap-2 pt-4">
               <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-                Cancelar
+                {canEdit || canCreate ? 'Cancelar' : 'Cerrar'}
               </Button>
               
               {existingEvolution && (
@@ -529,7 +624,7 @@ export default function EvolutionFormDialog({
                 </Button>
               )}
               
-              {!isLocked && (
+              {(canEdit || canCreate) && (
                 <Button 
                   type="submit" 
                   disabled={saveEvolutionMutation.isPending}

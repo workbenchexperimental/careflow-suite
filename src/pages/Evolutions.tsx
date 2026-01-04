@@ -21,6 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { 
   Search, 
   FileText, 
@@ -29,6 +35,9 @@ import {
   Eye,
   Download,
   Filter,
+  ChevronDown,
+  User,
+  Stethoscope,
 } from 'lucide-react';
 import { format, differenceInHours } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -39,6 +48,16 @@ import {
 } from '@/types/database';
 import EvolutionFormDialog from '@/components/evolutions/EvolutionFormDialog';
 
+interface GroupedOrder {
+  orderId: string;
+  codigoOrden: string;
+  patientName: string;
+  patientCedula: string;
+  especialidad: string;
+  therapistName: string;
+  evolutions: any[];
+}
+
 export default function Evolutions() {
   const { isTherapist, isAdmin, profile } = useAuth();
   const therapistProfile = isTherapist ? (profile as TherapistProfile) : null;
@@ -48,6 +67,7 @@ export default function Evolutions() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [showEvolutionDialog, setShowEvolutionDialog] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'grouped'>('grouped');
 
   const { data: evolutions, isLoading, refetch } = useQuery({
     queryKey: ['evolutions-list', therapistProfile?.id, isAdmin],
@@ -62,6 +82,7 @@ export default function Evolutions() {
             fecha_programada,
             medical_orders (
               id,
+              codigo_orden,
               especialidad,
               patients (
                 id,
@@ -83,13 +104,17 @@ export default function Evolutions() {
     },
   });
 
+  // Filter evolutions
   const filteredEvolutions = evolutions?.filter(evolution => {
     const patient = evolution.sessions?.medical_orders?.patients;
     const especialidad = evolution.sessions?.medical_orders?.especialidad;
+    const codigoOrden = evolution.sessions?.medical_orders?.codigo_orden;
     
+    const searchLower = searchTerm.toLowerCase();
     const matchesSearch = !searchTerm || 
-      patient?.nombre_completo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient?.cedula?.toLowerCase().includes(searchTerm.toLowerCase());
+      patient?.nombre_completo?.toLowerCase().includes(searchLower) ||
+      patient?.cedula?.toLowerCase().includes(searchLower) ||
+      codigoOrden?.toLowerCase().includes(searchLower);
     
     const matchesEspecialidad = filterEspecialidad === 'all' || 
       especialidad === filterEspecialidad;
@@ -100,6 +125,26 @@ export default function Evolutions() {
     
     return matchesSearch && matchesEspecialidad && matchesStatus;
   });
+
+  // Group evolutions by order
+  const groupedByOrder = filteredEvolutions?.reduce<Record<string, GroupedOrder>>((acc, evolution) => {
+    const orderId = evolution.sessions?.medical_orders?.id;
+    if (!orderId) return acc;
+    
+    if (!acc[orderId]) {
+      acc[orderId] = {
+        orderId,
+        codigoOrden: evolution.sessions?.medical_orders?.codigo_orden || 'Sin código',
+        patientName: evolution.sessions?.medical_orders?.patients?.nombre_completo || 'N/A',
+        patientCedula: evolution.sessions?.medical_orders?.patients?.cedula || '',
+        especialidad: evolution.sessions?.medical_orders?.especialidad || '',
+        therapistName: evolution.sessions?.medical_orders?.therapist_profiles?.nombre_completo || 'N/A',
+        evolutions: [],
+      };
+    }
+    acc[orderId].evolutions.push(evolution);
+    return acc;
+  }, {});
 
   const getTimeStatus = (evolution: any) => {
     if (evolution.bloqueado) {
@@ -145,7 +190,7 @@ export default function Evolutions() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por paciente o cédula..."
+                  placeholder="Buscar por código de orden, cédula o paciente..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -173,17 +218,128 @@ export default function Evolutions() {
                   <SelectItem value="locked">Bloqueadas</SelectItem>
                 </SelectContent>
               </Select>
+              <div className="flex gap-1 border rounded-md p-1">
+                <Button
+                  variant={viewMode === 'grouped' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grouped')}
+                >
+                  Agrupado
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                >
+                  Lista
+                </Button>
+              </div>
             </div>
 
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
+            ) : viewMode === 'grouped' && groupedByOrder && Object.keys(groupedByOrder).length > 0 ? (
+              /* Grouped View */
+              <div className="space-y-4">
+                {Object.values(groupedByOrder).map((group) => (
+                  <div key={group.orderId} className="border rounded-lg overflow-hidden">
+                    {/* Order Header */}
+                    <div className="bg-muted/30 p-4 border-b">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className="font-mono text-sm">
+                            {group.codigoOrden}
+                          </Badge>
+                          <Badge variant="secondary">
+                            {ESPECIALIDAD_LABELS[group.especialidad as Especialidad]}
+                          </Badge>
+                        </div>
+                        <span className="text-sm text-muted-foreground">
+                          {group.evolutions.length} evoluciones
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 mt-2 text-sm">
+                        <div className="flex items-center gap-1">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{group.patientName}</span>
+                          {group.patientCedula && (
+                            <span className="text-muted-foreground">({group.patientCedula})</span>
+                          )}
+                        </div>
+                        {isAdmin && (
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Stethoscope className="h-4 w-4" />
+                            <span>{group.therapistName}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Evolutions List */}
+                    <div className="divide-y">
+                      {group.evolutions
+                        .sort((a, b) => a.sessions?.numero_sesion - b.sessions?.numero_sesion)
+                        .map((evolution) => {
+                          const session = evolution.sessions;
+                          const timeStatus = getTimeStatus(evolution);
+                          const StatusIcon = timeStatus.icon;
+
+                          return (
+                            <div 
+                              key={evolution.id}
+                              className="flex items-center justify-between p-4 hover:bg-muted/20 transition-colors"
+                            >
+                              <div className="flex items-center gap-4">
+                                <Badge variant="outline">
+                                  Sesión #{session?.numero_sesion}
+                                </Badge>
+                                <div>
+                                  <p className="text-sm">
+                                    {format(new Date(session?.fecha_programada), 'dd/MM/yyyy', { locale: es })}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Creada: {format(new Date(evolution.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
+                                  </p>
+                                </div>
+                                {evolution.es_cierre && (
+                                  <Badge variant="secondary">Cierre</Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge 
+                                  variant={timeStatus.variant}
+                                  className={`gap-1 ${timeStatus.warning ? 'bg-orange-500 text-white' : ''}`}
+                                >
+                                  <StatusIcon className="h-3 w-3" />
+                                  {timeStatus.label}
+                                </Badge>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleViewEvolution(session?.id)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm">
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : filteredEvolutions && filteredEvolutions.length > 0 ? (
+              /* List View */
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Código Orden</TableHead>
                       <TableHead>Fecha</TableHead>
                       <TableHead>Paciente</TableHead>
                       <TableHead>Sesión</TableHead>
@@ -196,14 +352,20 @@ export default function Evolutions() {
                   <TableBody>
                     {filteredEvolutions.map((evolution) => {
                       const session = evolution.sessions;
-                      const patient = session?.medical_orders?.patients;
-                      const therapist = session?.medical_orders?.therapist_profiles;
-                      const especialidad = session?.medical_orders?.especialidad;
+                      const order = session?.medical_orders;
+                      const patient = order?.patients;
+                      const therapist = order?.therapist_profiles;
+                      const especialidad = order?.especialidad;
                       const timeStatus = getTimeStatus(evolution);
                       const StatusIcon = timeStatus.icon;
 
                       return (
                         <TableRow key={evolution.id}>
+                          <TableCell>
+                            <Badge variant="outline" className="font-mono text-xs">
+                              {order?.codigo_orden || 'N/A'}
+                            </Badge>
+                          </TableCell>
                           <TableCell>
                             {format(new Date(evolution.created_at), 'dd/MM/yyyy', { locale: es })}
                             <span className="block text-xs text-muted-foreground">
