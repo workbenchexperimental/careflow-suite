@@ -146,6 +146,81 @@ export type Database = {
           },
         ]
       }
+      initial_evaluations: {
+        Row: {
+          actividades_participacion: string | null
+          codigo_cie10: string | null
+          created_at: string
+          diagnostico_cie10: string
+          duracion_estimada: string | null
+          estructuras_corporales: string | null
+          factores_ambientales: string | null
+          factores_personales: string | null
+          frecuencia_sesiones: string | null
+          funciones_corporales: string | null
+          id: string
+          medical_order_id: string
+          objetivos_especificos: string | null
+          objetivos_generales: string
+          plan_intervencion: string
+          therapist_id: string
+          updated_at: string
+        }
+        Insert: {
+          actividades_participacion?: string | null
+          codigo_cie10?: string | null
+          created_at?: string
+          diagnostico_cie10: string
+          duracion_estimada?: string | null
+          estructuras_corporales?: string | null
+          factores_ambientales?: string | null
+          factores_personales?: string | null
+          frecuencia_sesiones?: string | null
+          funciones_corporales?: string | null
+          id?: string
+          medical_order_id: string
+          objetivos_especificos?: string | null
+          objetivos_generales: string
+          plan_intervencion: string
+          therapist_id: string
+          updated_at?: string
+        }
+        Update: {
+          actividades_participacion?: string | null
+          codigo_cie10?: string | null
+          created_at?: string
+          diagnostico_cie10?: string
+          duracion_estimada?: string | null
+          estructuras_corporales?: string | null
+          factores_ambientales?: string | null
+          factores_personales?: string | null
+          frecuencia_sesiones?: string | null
+          funciones_corporales?: string | null
+          id?: string
+          medical_order_id?: string
+          objetivos_especificos?: string | null
+          objetivos_generales?: string
+          plan_intervencion?: string
+          therapist_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "initial_evaluations_medical_order_id_fkey"
+            columns: ["medical_order_id"]
+            isOneToOne: true
+            referencedRelation: "medical_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "initial_evaluations_therapist_id_fkey"
+            columns: ["therapist_id"]
+            isOneToOne: false
+            referencedRelation: "therapist_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       medical_orders: {
         Row: {
           closed_at: string | null
