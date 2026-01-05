@@ -27,6 +27,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { 
   Search, 
   FileText, 
@@ -35,9 +41,10 @@ import {
   Eye,
   Download,
   Filter,
-  ChevronDown,
   User,
   Stethoscope,
+  CheckCircle,
+  ClipboardList,
 } from 'lucide-react';
 import { format, differenceInHours } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -47,6 +54,7 @@ import {
   TherapistProfile 
 } from '@/types/database';
 import EvolutionFormDialog from '@/components/evolutions/EvolutionFormDialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface GroupedOrder {
   orderId: string;
@@ -55,11 +63,14 @@ interface GroupedOrder {
   patientCedula: string;
   especialidad: string;
   therapistName: string;
+  totalSesiones: number;
+  sesionesCompletadas: number;
   evolutions: any[];
 }
 
 export default function Evolutions() {
   const { isTherapist, isAdmin, profile } = useAuth();
+  const { toast } = useToast();
   const therapistProfile = isTherapist ? (profile as TherapistProfile) : null;
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -84,6 +95,8 @@ export default function Evolutions() {
               id,
               codigo_orden,
               especialidad,
+              total_sesiones,
+              sesiones_completadas,
               patients (
                 id,
                 nombre_completo,
@@ -139,6 +152,8 @@ export default function Evolutions() {
         patientCedula: evolution.sessions?.medical_orders?.patients?.cedula || '',
         especialidad: evolution.sessions?.medical_orders?.especialidad || '',
         therapistName: evolution.sessions?.medical_orders?.therapist_profiles?.nombre_completo || 'N/A',
+        totalSesiones: evolution.sessions?.medical_orders?.total_sesiones || 0,
+        sesionesCompletadas: evolution.sessions?.medical_orders?.sesiones_completadas || 0,
         evolutions: [],
       };
     }
@@ -160,6 +175,34 @@ export default function Evolutions() {
   const handleViewEvolution = (sessionId: string) => {
     setSelectedSessionId(sessionId);
     setShowEvolutionDialog(true);
+  };
+
+  const handleDownloadPackagePDF = async (orderId: string) => {
+    try {
+      const response = await supabase.functions.invoke('generate-evolution-pdf', {
+        body: { orderId },
+      });
+      
+      if (response.error) throw response.error;
+      
+      const blob = new Blob([response.data], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        printWindow.onload = () => printWindow.print();
+      }
+      
+      toast({
+        title: 'PDF generado',
+        description: 'Se ha abierto una ventana para imprimir/guardar como PDF',
+      });
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error al generar PDF',
+        description: error.message,
+      });
+    }
   };
 
   return (
@@ -241,98 +284,135 @@ export default function Evolutions() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : viewMode === 'grouped' && groupedByOrder && Object.keys(groupedByOrder).length > 0 ? (
-              /* Grouped View */
-              <div className="space-y-4">
-                {Object.values(groupedByOrder).map((group) => (
-                  <div key={group.orderId} className="border rounded-lg overflow-hidden">
-                    {/* Order Header */}
-                    <div className="bg-muted/30 p-4 border-b">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-3">
-                          <Badge variant="outline" className="font-mono text-sm">
-                            {group.codigoOrden}
-                          </Badge>
-                          <Badge variant="secondary">
-                            {ESPECIALIDAD_LABELS[group.especialidad as Especialidad]}
-                          </Badge>
+              /* Grouped View with Accordion */
+              <Accordion type="multiple" className="space-y-4">
+                {Object.values(groupedByOrder).map((group) => {
+                  const isPackageComplete = group.sesionesCompletadas === group.totalSesiones && group.totalSesiones > 0;
+                  
+                  return (
+                    <AccordionItem 
+                      key={group.orderId} 
+                      value={group.orderId}
+                      className="border rounded-lg overflow-hidden"
+                    >
+                      <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/20">
+                        <div className="flex flex-wrap items-center justify-between gap-2 w-full pr-4">
+                          <div className="flex items-center gap-3">
+                            <Badge variant="outline" className="font-mono text-sm">
+                              {group.codigoOrden}
+                            </Badge>
+                            <Badge variant="secondary">
+                              {ESPECIALIDAD_LABELS[group.especialidad as Especialidad]}
+                            </Badge>
+                            {isPackageComplete && (
+                              <Badge variant="default" className="gap-1 bg-green-600">
+                                <CheckCircle className="h-3 w-3" />
+                                Completo
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-1 text-sm">
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">{group.patientName}</span>
+                            </div>
+                            <span className="text-sm text-muted-foreground">
+                              {group.evolutions.length} evoluciones
+                            </span>
+                          </div>
                         </div>
-                        <span className="text-sm text-muted-foreground">
-                          {group.evolutions.length} evoluciones
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 mt-2 text-sm">
-                        <div className="flex items-center gap-1">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{group.patientName}</span>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4">
+                        {/* Patient & Therapist Info */}
+                        <div className="flex items-center gap-4 mb-4 text-sm">
                           {group.patientCedula && (
-                            <span className="text-muted-foreground">({group.patientCedula})</span>
+                            <span className="text-muted-foreground">
+                              Cédula: {group.patientCedula}
+                            </span>
+                          )}
+                          {isAdmin && (
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Stethoscope className="h-4 w-4" />
+                              <span>{group.therapistName}</span>
+                            </div>
                           )}
                         </div>
-                        {isAdmin && (
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <Stethoscope className="h-4 w-4" />
-                            <span>{group.therapistName}</span>
+
+                        {/* Evolutions List */}
+                        <div className="divide-y border rounded-lg">
+                          {group.evolutions
+                            .sort((a, b) => a.sessions?.numero_sesion - b.sessions?.numero_sesion)
+                            .map((evolution) => {
+                              const session = evolution.sessions;
+                              const timeStatus = getTimeStatus(evolution);
+                              const StatusIcon = timeStatus.icon;
+
+                              return (
+                                <div 
+                                  key={evolution.id}
+                                  className="flex items-center justify-between p-4 hover:bg-muted/20 transition-colors"
+                                >
+                                  <div className="flex items-center gap-4">
+                                    <Badge variant="outline">
+                                      Sesión #{session?.numero_sesion}
+                                    </Badge>
+                                    <div>
+                                      <p className="text-sm">
+                                        {format(new Date(session?.fecha_programada), 'dd/MM/yyyy', { locale: es })}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        Creada: {format(new Date(evolution.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
+                                      </p>
+                                    </div>
+                                    {evolution.es_cierre && (
+                                      <Badge variant="secondary">Cierre</Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge 
+                                      variant={timeStatus.variant}
+                                      className={`gap-1 ${timeStatus.warning ? 'bg-orange-500 text-white' : ''}`}
+                                    >
+                                      <StatusIcon className="h-3 w-3" />
+                                      {timeStatus.label}
+                                    </Badge>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleViewEvolution(session?.id)}
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+
+                        {/* Package PDF Download */}
+                        {isPackageComplete ? (
+                          <div className="mt-4 pt-4 border-t">
+                            <Button
+                              variant="outline"
+                              className="w-full gap-2"
+                              onClick={() => handleDownloadPackagePDF(group.orderId)}
+                            >
+                              <Download className="h-4 w-4" />
+                              Descargar PDF Completo del Paquete
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="mt-4 pt-4 border-t text-center">
+                            <p className="text-sm text-muted-foreground">
+                              Complete todas las sesiones ({group.sesionesCompletadas}/{group.totalSesiones}) para descargar el PDF del paquete
+                            </p>
                           </div>
                         )}
-                      </div>
-                    </div>
-
-                    {/* Evolutions List */}
-                    <div className="divide-y">
-                      {group.evolutions
-                        .sort((a, b) => a.sessions?.numero_sesion - b.sessions?.numero_sesion)
-                        .map((evolution) => {
-                          const session = evolution.sessions;
-                          const timeStatus = getTimeStatus(evolution);
-                          const StatusIcon = timeStatus.icon;
-
-                          return (
-                            <div 
-                              key={evolution.id}
-                              className="flex items-center justify-between p-4 hover:bg-muted/20 transition-colors"
-                            >
-                              <div className="flex items-center gap-4">
-                                <Badge variant="outline">
-                                  Sesión #{session?.numero_sesion}
-                                </Badge>
-                                <div>
-                                  <p className="text-sm">
-                                    {format(new Date(session?.fecha_programada), 'dd/MM/yyyy', { locale: es })}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    Creada: {format(new Date(evolution.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
-                                  </p>
-                                </div>
-                                {evolution.es_cierre && (
-                                  <Badge variant="secondary">Cierre</Badge>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Badge 
-                                  variant={timeStatus.variant}
-                                  className={`gap-1 ${timeStatus.warning ? 'bg-orange-500 text-white' : ''}`}
-                                >
-                                  <StatusIcon className="h-3 w-3" />
-                                  {timeStatus.label}
-                                </Badge>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleViewEvolution(session?.id)}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm">
-                                  <Download className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
             ) : filteredEvolutions && filteredEvolutions.length > 0 ? (
               /* List View */
               <div className="rounded-md border">
@@ -415,12 +495,6 @@ export default function Evolutions() {
                                 onClick={() => handleViewEvolution(session?.id)}
                               >
                                 <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                              >
-                                <Download className="h-4 w-4" />
                               </Button>
                             </div>
                           </TableCell>
