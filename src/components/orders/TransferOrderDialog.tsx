@@ -214,12 +214,12 @@ export default function TransferOrderDialog({
                   <SelectValue placeholder="Seleccione nuevo terapeuta" />
                 </SelectTrigger>
                 <SelectContent>
-                  {therapists?.length === 0 ? (
-                    <SelectItem value="" disabled>
-                      No hay otros terapeutas de esta especialidad
-                    </SelectItem>
+                  {!therapists || therapists.length === 0 ? (
+                    <div className="py-6 text-center text-sm text-muted-foreground">
+                      No hay otros terapeutas de {ESPECIALIDAD_LABELS[order.especialidad as Especialidad]}
+                    </div>
                   ) : (
-                    therapists?.map((therapist) => (
+                    therapists.map((therapist) => (
                       <SelectItem key={therapist.id} value={therapist.id}>
                         {therapist.nombre_completo}
                       </SelectItem>
