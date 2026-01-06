@@ -212,9 +212,17 @@ export default function SessionDetailDialog({
   const patient = session.medical_orders?.patients;
   const therapist = session.medical_orders?.therapist_profiles;
   
+  // Calcular si la sesión está disponible para acciones (llegó la fecha/hora)
+  const sessionDateTime = new Date(`${session.fecha_programada}T${session.hora_inicio}`);
+  const now = new Date();
+  const isSessionTimeReached = now >= sessionDateTime;
+  
   // SOLO el terapeuta asignado puede cambiar el estado (NO el admin)
+  // Y solo si ya llegó la fecha/hora de la sesión
   const canChangeStatus = session.estado === 'programada' && 
-    isTherapist && therapistProfile?.id === therapist?.id;
+    isTherapist && 
+    therapistProfile?.id === therapist?.id &&
+    isSessionTimeReached;
 
   return (
     <>
@@ -315,6 +323,24 @@ export default function SessionDetailDialog({
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
                     Solo el terapeuta asignado puede cambiar el estado de las sesiones.
+                  </AlertDescription>
+                </Alert>
+              </>
+            )}
+
+            {/* Mensaje si no ha llegado la hora de la sesión */}
+            {isTherapist && therapistProfile?.id === therapist?.id && 
+             session.estado === 'programada' && !isSessionTimeReached && (
+              <>
+                <Separator />
+                <Alert>
+                  <Clock className="h-4 w-4" />
+                  <AlertDescription>
+                    Esta sesión está programada para el{' '}
+                    <strong>
+                      {format(sessionDateTime, "d 'de' MMMM 'a las' HH:mm", { locale: es })}
+                    </strong>.
+                    Las acciones estarán disponibles cuando llegue el momento.
                   </AlertDescription>
                 </Alert>
               </>
