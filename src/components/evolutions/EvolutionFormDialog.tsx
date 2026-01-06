@@ -165,51 +165,78 @@ export default function EvolutionFormDialog({
     enabled: !!session?.medical_order_id,
   });
 
-  // Query para verificar sesiones anteriores sin evolución
+  // Query para verificar sesiones anteriores sin evolución (basado en FECHA, no número)
   const { data: pendingPreviousSessions } = useQuery({
-    queryKey: ['pending-sessions', session?.medical_order_id, session?.numero_sesion],
+    queryKey: ['pending-sessions-by-date', session?.medical_order_id, session?.id],
     queryFn: async () => {
-      if (!session?.medical_order_id || !session?.numero_sesion) return [];
+      if (!session?.medical_order_id || !session?.id) return [];
       
       const { data, error } = await supabase
         .from('sessions')
         .select(`
           id,
           numero_sesion,
+          fecha_programada,
+          hora_inicio,
           estado,
-          reprogramada_a,
-          evolutions(id)
+          reprogramada_a
         `)
         .eq('medical_order_id', session.medical_order_id)
-        .lt('numero_sesion', session.numero_sesion)
+        .neq('id', session.id)
         .not('estado', 'in', '("cancelada","reprogramada")');
       
       if (error) throw error;
       
-      // Filter sessions without evolution
-      return data?.filter(s => !s.evolutions || (Array.isArray(s.evolutions) && s.evolutions.length === 0)) || [];
+      // Filtrar las que son anteriores por fecha/hora y verificar si tienen evolución
+      const currentDateTime = new Date(`${session.fecha_programada}T${session.hora_inicio}`);
+      
+      const sessionsToCheck = data?.filter(s => {
+        const sessionDateTime = new Date(`${s.fecha_programada}T${s.hora_inicio}`);
+        return sessionDateTime < currentDateTime;
+      }) || [];
+      
+      // Verificar cuáles no tienen evolución
+      const sessionsWithoutEvolution = [];
+      for (const s of sessionsToCheck) {
+        const { data: evo } = await supabase
+          .from('evolutions')
+          .select('id')
+          .eq('session_id', s.id)
+          .maybeSingle();
+        if (!evo) {
+          sessionsWithoutEvolution.push(s);
+        }
+      }
+      
+      return sessionsWithoutEvolution;
     },
-    enabled: !!session?.medical_order_id && !!session?.numero_sesion,
+    enabled: !!session?.medical_order_id && !!session?.id,
   });
 
-  // Query para verificar sesiones canceladas sin reprogramar
+  // Query para verificar sesiones canceladas sin reprogramar (anteriores por FECHA)
   const { data: canceledNotRescheduled } = useQuery({
-    queryKey: ['canceled-not-rescheduled', session?.medical_order_id, session?.numero_sesion],
+    queryKey: ['canceled-not-rescheduled-by-date', session?.medical_order_id, session?.id],
     queryFn: async () => {
-      if (!session?.medical_order_id || !session?.numero_sesion) return [];
+      if (!session?.medical_order_id || !session?.id) return [];
       
       const { data, error } = await supabase
         .from('sessions')
-        .select(`id, numero_sesion, estado, reprogramada_a`)
+        .select(`id, numero_sesion, fecha_programada, hora_inicio`)
         .eq('medical_order_id', session.medical_order_id)
-        .eq('numero_sesion', session.numero_sesion - 1)
+        .neq('id', session.id)
         .eq('estado', 'cancelada')
         .is('reprogramada_a', null);
       
       if (error) throw error;
-      return data || [];
+      
+      const currentDateTime = new Date(`${session.fecha_programada}T${session.hora_inicio}`);
+      
+      return data?.filter(s => {
+        const sessionDateTime = new Date(`${s.fecha_programada}T${s.hora_inicio}`);
+        return sessionDateTime < currentDateTime;
+      }) || [];
     },
-    enabled: !!session?.medical_order_id && session?.numero_sesion && session.numero_sesion > 1,
+    enabled: !!session?.medical_order_id && !!session?.id,
   });
 
   // Cargar datos existentes en el formulario
@@ -429,26 +456,28 @@ export default function EvolutionFormDialog({
             </Alert>
           )}
 
-          {/* Alert: Pending previous sessions */}
+          {/* Alert: Pending previous sessions (by date) */}
           {isAssignedTherapist && !existingEvolution && hasPendingSessions && (
             <Alert variant="destructive">
               <ListOrdered className="h-4 w-4" />
               <AlertDescription>
-                Debe completar las evoluciones de las sesiones anteriores primero:
+                Debe completar las evoluciones de las sesiones anteriores por fecha primero:
                 <span className="font-medium ml-1">
-                  Sesiones {pendingPreviousSessions.map(s => `#${s.numero_sesion}`).join(', ')}
+                  Sesiones {pendingPreviousSessions.map(s => `#${s.numero_sesion} (${format(new Date(s.fecha_programada), 'd/MM')})`).join(', ')}
                 </span>
               </AlertDescription>
             </Alert>
           )}
 
-          {/* Alert: Canceled session not rescheduled */}
+          {/* Alert: Canceled session not rescheduled (by date) */}
           {isAssignedTherapist && !existingEvolution && hasCanceledNotRescheduled && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                La sesión #{(canceledNotRescheduled?.[0]?.numero_sesion)} está cancelada y pendiente de reprogramar.
-                Reprograme la sesión antes de continuar con las siguientes evoluciones.
+                Hay sesiones canceladas anteriores pendientes de reprogramar:
+                <span className="font-medium ml-1">
+                  Sesiones {canceledNotRescheduled?.map(s => `#${s.numero_sesion} (${format(new Date(s.fecha_programada), 'd/MM')})`).join(', ')}
+                </span>
               </AlertDescription>
             </Alert>
           )}

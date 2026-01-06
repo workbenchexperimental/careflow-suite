@@ -40,6 +40,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { addDays, format, setHours, setMinutes } from 'date-fns';
 
 const orderSchema = z.object({
+  codigo_orden: z.string().min(1, 'Ingrese el código de la orden médica'),
   patient_id: z.string().min(1, 'Seleccione un paciente'),
   therapist_id: z.string().min(1, 'Seleccione un terapeuta'),
   especialidad: z.enum([
@@ -88,6 +89,7 @@ export default function MedicalOrderFormDialog({
   const form = useForm<OrderFormData>({
     resolver: zodResolver(orderSchema),
     defaultValues: {
+      codigo_orden: '',
       patient_id: '',
       therapist_id: '',
       especialidad: 'fisioterapia',
@@ -154,12 +156,17 @@ export default function MedicalOrderFormDialog({
     ubicacion: UbicacionSesion
   ) => {
     const sessions = [];
-    let currentDate = new Date(fechaInicio);
+    
+    // Parsear la fecha correctamente para evitar problemas de timezone UTC
+    const [year, month, day] = fechaInicio.split('-').map(Number);
+    let currentDate = new Date(year, month - 1, day); // mes es 0-indexed
+    const startDate = new Date(year, month - 1, day);
+    
     let sessionNumber = 1;
 
     while (sessionNumber <= totalSesiones) {
       const dayOfWeek = currentDate.getDay();
-      // Convertir domingo (0) a 7 para coincidir con ISO
+      // Convertir domingo (0) a 7 para coincidir con ISO (Lun=1, Dom=7)
       const isoDay = dayOfWeek === 0 ? 7 : dayOfWeek;
 
       if (diasSemana.includes(isoDay)) {
@@ -175,8 +182,8 @@ export default function MedicalOrderFormDialog({
 
       currentDate = addDays(currentDate, 1);
 
-      // Prevenir bucle infinito
-      if (currentDate > addDays(new Date(fechaInicio), 365)) {
+      // Prevenir bucle infinito (máximo 1 año)
+      if (currentDate > addDays(startDate, 365)) {
         break;
       }
     }
@@ -190,6 +197,7 @@ export default function MedicalOrderFormDialog({
       const { data: newOrder, error: orderError } = await supabase
         .from('medical_orders')
         .insert({
+          codigo_orden: data.codigo_orden,
           patient_id: data.patient_id,
           therapist_id: data.therapist_id,
           especialidad: data.especialidad,
@@ -270,6 +278,34 @@ export default function MedicalOrderFormDialog({
         <ScrollArea className="max-h-[calc(90vh-120px)] pr-4">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Código de Orden Médica */}
+              <div className="form-section">
+                <div className="flex items-center gap-2 mb-4">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <span className="form-section-title">Orden Médica</span>
+                </div>
+                
+                <FormField
+                  control={form.control}
+                  name="codigo_orden"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Código de Orden Médica *</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Ej: 12345-2026" 
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Ingrese el número de la orden médica tal como aparece en el documento del doctor
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               {/* Paciente y Terapeuta */}
               <div className="form-section">
                 <div className="flex items-center gap-2 mb-4">
