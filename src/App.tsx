@@ -20,8 +20,6 @@ import CanceledSessions from "./pages/CanceledSessions";
 import MySchedule from "./pages/MySchedule";
 import Profile from "./pages/Profile";
 import Evolutions from "./pages/Evolutions";
-import Settings from "./pages/Settings";
-import Payroll from "./pages/Payroll";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -86,22 +84,6 @@ const App = () => (
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <CanceledSessions />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/settings"
-                element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <Settings />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/payroll"
-                element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <Payroll />
                   </ProtectedRoute>
                 }
               />
