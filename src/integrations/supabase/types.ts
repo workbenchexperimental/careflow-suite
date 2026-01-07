@@ -449,6 +449,129 @@ export type Database = {
         }
         Relationships: []
       }
+      payroll_details: {
+        Row: {
+          created_at: string
+          es_por_hora: boolean
+          horas_domiciliaria: number
+          horas_intramural: number
+          id: string
+          notas: string | null
+          period_id: string
+          sesiones_domiciliaria: number
+          sesiones_intramural: number
+          subtotal_domiciliaria: number
+          subtotal_intramural: number
+          tarifa_hora_domiciliaria: number | null
+          tarifa_hora_intramural: number | null
+          tarifa_sesion_domiciliaria: number | null
+          tarifa_sesion_intramural: number | null
+          therapist_id: string
+          total_bruto: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          es_por_hora?: boolean
+          horas_domiciliaria?: number
+          horas_intramural?: number
+          id?: string
+          notas?: string | null
+          period_id: string
+          sesiones_domiciliaria?: number
+          sesiones_intramural?: number
+          subtotal_domiciliaria?: number
+          subtotal_intramural?: number
+          tarifa_hora_domiciliaria?: number | null
+          tarifa_hora_intramural?: number | null
+          tarifa_sesion_domiciliaria?: number | null
+          tarifa_sesion_intramural?: number | null
+          therapist_id: string
+          total_bruto?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          es_por_hora?: boolean
+          horas_domiciliaria?: number
+          horas_intramural?: number
+          id?: string
+          notas?: string | null
+          period_id?: string
+          sesiones_domiciliaria?: number
+          sesiones_intramural?: number
+          subtotal_domiciliaria?: number
+          subtotal_intramural?: number
+          tarifa_hora_domiciliaria?: number | null
+          tarifa_hora_intramural?: number | null
+          tarifa_sesion_domiciliaria?: number | null
+          tarifa_sesion_intramural?: number | null
+          therapist_id?: string
+          total_bruto?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_details_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_details_therapist_id_fkey"
+            columns: ["therapist_id"]
+            isOneToOne: false
+            referencedRelation: "therapist_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_periods: {
+        Row: {
+          anio: number
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          created_by: string | null
+          estado: Database["public"]["Enums"]["estado_periodo"]
+          fecha_fin: string
+          fecha_inicio: string
+          id: string
+          mes: number
+          notas: string | null
+          paid_at: string | null
+        }
+        Insert: {
+          anio: number
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          estado?: Database["public"]["Enums"]["estado_periodo"]
+          fecha_fin: string
+          fecha_inicio: string
+          id?: string
+          mes: number
+          notas?: string | null
+          paid_at?: string | null
+        }
+        Update: {
+          anio?: number
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          estado?: Database["public"]["Enums"]["estado_periodo"]
+          fecha_fin?: string
+          fecha_inicio?: string
+          id?: string
+          mes?: number
+          notas?: string | null
+          paid_at?: string | null
+        }
+        Relationships: []
+      }
       sessions: {
         Row: {
           created_at: string
@@ -574,7 +697,9 @@ export type Database = {
           therapist_id: string
           updated_at: string
           valor_hora: number | null
+          valor_hora_domiciliaria: number | null
           valor_sesion: number | null
+          valor_sesion_domiciliaria: number | null
         }
         Insert: {
           activo?: boolean
@@ -585,7 +710,9 @@ export type Database = {
           therapist_id: string
           updated_at?: string
           valor_hora?: number | null
+          valor_hora_domiciliaria?: number | null
           valor_sesion?: number | null
+          valor_sesion_domiciliaria?: number | null
         }
         Update: {
           activo?: boolean
@@ -596,7 +723,9 @@ export type Database = {
           therapist_id?: string
           updated_at?: string
           valor_hora?: number | null
+          valor_hora_domiciliaria?: number | null
           valor_sesion?: number | null
+          valor_sesion_domiciliaria?: number | null
         }
         Relationships: [
           {
@@ -654,6 +783,7 @@ export type Database = {
         | "psicologia"
         | "terapia_acuatica"
       estado_orden: "activa" | "cerrada"
+      estado_periodo: "abierto" | "cerrado" | "pagado"
       estado_sesion:
         | "programada"
         | "completada"
@@ -798,6 +928,7 @@ export const Constants = {
         "terapia_acuatica",
       ],
       estado_orden: ["activa", "cerrada"],
+      estado_periodo: ["abierto", "cerrado", "pagado"],
       estado_sesion: [
         "programada",
         "completada",
